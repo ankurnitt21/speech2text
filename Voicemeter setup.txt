@@ -1,0 +1,25 @@
+Steps for Setting Up Voicemeeter:
+Open Voicemeeter:
+
+Launch the Voicemeeter application on your computer.
+In 'Hardware Input', select 'WDM Microphone':
+
+Choose your microphone input from the list in Voicemeeter under the 'Hardware Input' section.
+In 'Hardware Input', turn off 'A':
+
+In the 'Hardware Input' section, disable the 'A' button to stop sending the audio to the virtual output.
+In 'Hardware Out', select 'WDM Speaker Realtek' in 'A1':
+
+Set the 'A1' output to 'WDM Speaker Realtek' to ensure the audio output is routed to your speakers or headphones.
+Open 'Sound Settings' in Playback and Recording:
+
+Go to your system's sound settings.
+In both 'Playback' and 'Recording' sections, select 'Voicemeeter' as your input and output device.
+Install Voicemeeter Version 1.0.6.4:
+
+Download and install Voicemeeter version 1.0.6.4 from 
+https://l.facebook.com/l.php?u=https%3A%2F%2Fdownload.vb-audio.com%2FDownload_CABLE%2FVoicemeeterSetup_v1064.zip&h=AT06eUMAlhfexSMd58cjnn_VqTUfwUhOilhyg9uVeup3EiLJjAVnpLc2CkE-gBbitAYDg_M7VKpyx8vrUgCk0EKfcRux_lDjdb2cFZk1p0m0f_C4FMmmmlxaxvSCTnhZSbbHGEOYqxAo-4AmPhyCwp8AzLMAzk5Qh8mN&__tn__=-UK*F
+
+In Teams or Any Other Application, Set the Microphone to 'Voicemeeter':
+
+In the application (like Microsoft Teams or any other), set the microphone to 'Voicemeeter' to use the configured setup.
