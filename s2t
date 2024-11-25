@@ -1,0 +1,134 @@
+import assemblyai as aai
+import pyperclip  # Import pyperclip to interact with the clipboard
+import tkinter as tk
+from tkinter import scrolledtext
+import threading
+import time
+
+full_trans = ""  # Global variable to store the full transcript
+
+
+class AI_Assistant:
+    def __init__(self):
+        aai.settings.api_key = "e8349e0c311e419ab4a0993dcade5866"
+        self.transcriber = None
+
+    ###### Step 2: Real-Time Transcription with AssemblyAI ######
+    def start_transcription(self):
+        # Using a sample rate of 22050 Hz and a more appropriate silence threshold for better accuracy
+        self.transcriber = aai.RealtimeTranscriber(
+            sample_rate=44100,  # Slightly lower rate for better performance without sacrificing quality
+            on_data=self.on_data,
+            on_error=self.on_error,
+            on_open=self.on_open,
+            on_close=self.on_close,
+            end_utterance_silence_threshold=150  # Increase threshold to allow for natural pauses in speech
+        )
+
+        self.transcriber.connect()
+        microphone_stream = aai.extras.MicrophoneStream(sample_rate=44100)
+        self.transcriber.stream(microphone_stream)
+
+    def stop_transcription(self):
+        if self.transcriber:
+            self.transcriber.close()
+            self.transcriber = None
+
+    def on_open(self, session_opened: aai.RealtimeSessionOpened):
+        print("Session ID:", session_opened.session_id)
+
+    def on_data(self, transcript: aai.RealtimeTranscript):
+        global full_trans
+        if not transcript.text:
+            return
+
+        # Check if transcript.text is a list of characters and join them into a string
+        if isinstance(transcript.text, list):  # If it's a list, join it
+            transcript_text = ''.join(transcript.text)  # Join characters into a string
+        else:
+            transcript_text = transcript.text  # If it's already a string, use it directly
+
+        # Print final transcriptions only, to avoid excessive updates
+        if isinstance(transcript, aai.RealtimeFinalTranscript):
+            print(f"\nPatient: {transcript_text}\n")
+
+            full_trans += transcript_text + " "
+
+            # Copy the full transcript to the clipboard
+            pyperclip.copy(full_trans)  # Copy all transcriptions to clipboard
+
+            # Optionally, print a message to confirm it was copied
+            print("Full transcription copied to clipboard.")
+
+    def on_error(self, error: aai.RealtimeError):
+        print("An error occurred:", error)
+
+    def on_close(self):
+        print("Session closed.")
+
+    def clear_transcript(self):
+        global full_trans
+        full_trans = ""  # Reset the transcript to empty
+        pyperclip.copy("")  # Clear the clipboard as well
+        print("Transcript cleared.")  # Confirm in console
+
+
+# Tkinter GUI for displaying and interacting with the clipboard
+def create_gui():
+    global clipboard_text_box, root  # Declare as global to update in other functions
+
+    # Set up the Tkinter window
+    root = tk.Tk()
+    root.title("Clipboard Viewer and Clearer")
+
+    # Set the size of the window
+    root.geometry("500x400")
+
+    # Create the scrollable text box to display clipboard content
+    clipboard_text_box = scrolledtext.ScrolledText(root, width=60, height=15, wrap=tk.WORD)
+    clipboard_text_box.pack(padx=10, pady=10)
+
+    # Create the Clear button
+    clear_button = tk.Button(root, text="Clear Transcript", command=clear_transcript)
+    clear_button.pack(pady=10)
+
+    # Start the Tkinter main loop in the main thread
+    root.after(20, update_gui)  # Start the update_gui function after 1 second to avoid thread issues
+    root.mainloop()
+
+
+# Function to update the display with the current clipboard content
+def update_gui():
+    global clipboard_text_box, root
+    if clipboard_text_box:
+        clipboard_text_box.delete(1.0, tk.END)  # Clear the text box
+        clipboard_text_box.insert(tk.END, full_trans)  # Insert new text
+    # Schedule the next update after 1 second
+    root.after(200, update_gui)
+
+
+# Function to clear the full transcript
+def clear_transcript():
+    global full_trans
+    full_trans = ""  # Reset the transcript to empty
+    pyperclip.copy("")  # Clear the clipboard (optional, if you want)
+    print("Transcript cleared.")  # Confirm in console
+
+
+# Function to start transcription in a separate thread
+def start_transcription_thread():
+    ai_assistant.start_transcription()
+
+
+# Example of starting transcription and GUI
+greeting = "Thank you for calling Vancouver dental clinic. My name is Sandy, how may I assist you?"
+ai_assistant = AI_Assistant()
+print(greeting)
+
+# Start the GUI in the main thread
+gui_thread = threading.Thread(target=create_gui) # This runs the Tkinter GUI
+gui_thread.start()
+
+# Start transcription in a separate thread so it doesn't block the GUI
+transcription_thread = threading.Thread(target=start_transcription_thread)
+transcription_thread.start()
