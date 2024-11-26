@@ -1,0 +1,203 @@
+import assemblyai as aai
+import pyperclip  # Import pyperclip to interact with the clipboard
+import tkinter as tk
+from tkinter import scrolledtext
+import threading
+import time
+from openai import OpenAI
+from pynput import keyboard
+
+# OpenAI API key
+openai_client = OpenAI(api_key="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")
+
+# Global variables
+full_trans = ""  # Full transcript
+prev_trans = ""
+transcription_thread = None  # Transcription thread
+transcription_running = False  # Transcription status flag
+
+class AI_Assistant:
+    def __init__(self):
+        aai.settings.api_key = "e8349e0c311e419ab4a0993dcade5866"  # Your AssemblyAI API key
+        self.transcriber = None
+
+    ###### Step 2: Real-Time Transcription with AssemblyAI ######
+    def start_transcription(self):
+        global transcription_running
+        transcription_running = True  # Set the flag to True when transcription starts
+
+        # Using a sample rate of 44100 Hz for better quality
+        self.transcriber = aai.RealtimeTranscriber(
+            sample_rate=44100,  # Sample rate
+            on_data=self.on_data,
+            on_error=self.on_error,
+            on_open=self.on_open,
+            on_close=self.on_close,
+            end_utterance_silence_threshold=150  # Silence threshold
+        )
+
+        self.transcriber.connect()
+        microphone_stream = aai.extras.MicrophoneStream(sample_rate=44100)
+        self.transcriber.stream(microphone_stream)
+
+    def stop_transcription(self):
+        global transcription_running
+        transcription_running = False  # Set the flag to False to stop transcription
+
+        if self.transcriber:
+            self.transcriber.close()
+            self.transcriber = None
+
+
+    def on_open(self, session_opened: aai.RealtimeSessionOpened):
+        print("Session ID:", session_opened.session_id)
+
+    def on_data(self, transcript: aai.RealtimeTranscript):
+        global full_trans
+        if not transcript.text:
+            return
+
+        # Print final transcriptions
+        if isinstance(transcript, aai.RealtimeFinalTranscript):
+            full_trans += transcript.text + " "  # Append to full transcript
+
+    def on_error(self, error: aai.RealtimeError):
+        print("An error occurred:", error)
+
+    def on_close(self):
+        print("Session closed.")
+
+    def clear_transcript(self):
+        global full_trans
+        full_trans = ""  # Reset the transcript to empty
+
+
+# Tkinter GUI for displaying and interacting with the clipboard
+def create_gui():
+    global clipboard_text_box, root, ai_assistant
+
+    # Set up the Tkinter window
+    root = tk.Tk()
+    root.title("AI Assistant Chat")
+
+    # Set the size of the window
+    root.geometry("1000x1000")  # Increased the window size to accommodate more buttons
+
+    # Create the scrollable text box to display transcript and responses
+    clipboard_text_box = scrolledtext.ScrolledText(root, width=100, height=40, wrap=tk.WORD)
+    clipboard_text_box.pack(padx=30, pady=30)
+
+    # Create a frame to contain the buttons and organize them side by side
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=15)  # Add some padding around the frame
+
+    # Create the Start button to begin transcription
+    start_button = tk.Button(button_frame, text="Start Transcription", command=start_transcription)
+    start_button.pack(side=tk.LEFT, padx=5)  # Pack buttons side by side with horizontal padding
+
+    # Create the Stop button to stop transcription
+    stop_button = tk.Button(button_frame, text="Stop Transcription", command=stop_transcription)
+    stop_button.pack(side=tk.LEFT, padx=5)
+
+    # Create the Clear button to clear transcript and clipboard
+    clear_button = tk.Button(button_frame, text="Clear Transcript", command=clear_transcript)
+    clear_button.pack(side=tk.LEFT, padx=5)
+
+    # Create a "Search" button to simulate generating responses from OpenAI
+    search_button = tk.Button(button_frame, text="Generate Response", command=generate_ai_response)
+    search_button.pack(side=tk.LEFT, padx=5)
+
+    clipboard_text_box.focus_set()
+    #clipboard_text_box.bind("<Return>", on_enter_pressed)
+
+    listener = keyboard.Listener(on_press=on_key_press)
+    listener.start()
+
+    root.after(20, update_gui)  # Start the update_gui function to update the window
+    root.mainloop()
+
+def on_enter_pressed(event=None):
+    global full_trans
+    user_input = clipboard_text_box.get("end-2c linestart", "end-1c")  # Get the last line typed by the user
+
+    if user_input.strip():  # If there's actual input
+        full_trans += user_input + "\n"
+        clipboard_text_box.insert(tk.END, "\n")  # Add a new line after the user input
+
+    # Clear the user input from the text box
+    clipboard_text_box.delete("end-2c linestart", "end-1c")
+    generate_ai_response()
+
+    # Prevent the Enter key from adding an extra newline
+    return "break"
+
+def on_key_press(key):
+    print("Hii")
+    global full_trans
+    if key == keyboard.Key.num_lock:
+        user_input = clipboard_text_box.get("end-2c linestart", "end-1c")  # Get the last line typed by the user
+
+        if user_input.strip():  # If there's actual input
+            full_trans += user_input + "\n"
+            clipboard_text_box.insert(tk.END, "\n")  # Add a new line after the user input
+
+        # Clear the user input from the text box
+        clipboard_text_box.delete("end-2c linestart", "end-1c")
+        generate_ai_response()
+
+        # Prevent the Enter key from adding an extra newline
+        return "break"
+# Function to update the display with the current clipboard content (real-time)
+def update_gui():
+    global clipboard_text_box,prev_trans,full_trans,track_all
+    new_text = full_trans[len(prev_trans):]
+
+    if not full_trans:
+        clipboard_text_box.delete(1.0, tk.END)
+    if new_text:
+        if clipboard_text_box:
+            clipboard_text_box.insert(tk.END,new_text)  # Clear the text box
+            clipboard_text_box.yview(tk.END)  # Insert the current transcript into text box
+    prev_trans = full_trans
+    root.after(10, update_gui)
+
+# Function to clear the full transcript
+def clear_transcript():
+    global full_trans,prev_trans
+    full_trans = ""  # Reset the transcript to empty
+    prev_trans = ""
+
+# Function to start transcription in a separate thread
+def start_transcription():
+    global transcription_thread, ai_assistant, full_trans,prev_trans,track_all
+    full_trans = ""  # Reset full transcript before starting
+    prev_trans = ""
+    transcription_thread = threading.Thread(target=ai_assistant.start_transcription)
+    transcription_thread.start()
+
+# Function to stop transcription without blocking the UI
+def stop_transcription():
+    global transcription_thread, ai_assistant, full_trans
+    ai_assistant.stop_transcription()  # Stop transcription
+
+# Function to generate the AI response using OpenAI API (similar to ChatGPT)
+
+
+def generate_ai_response():
+    global full_trans,prev_trans,track_all
+    if full_trans.strip():
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": full_trans}]
+        )
+        ai_response = response.choices[0].message.content
+
+        full_trans += "\nassistant: " + ai_response +"\nuser: "
+
+
+# Initialize the AI Assistant
+ai_assistant = AI_Assistant()
+
+# Start the Tkinter GUI in a separate thread
+gui_thread = threading.Thread(target=create_gui)
+gui_thread.start()
