@@ -1,0 +1,187 @@
+import time
+import pyautogui
+import pyperclip
+import webbrowser
+import threading
+import assemblyai as aai
+import keyboard
+import pygetwindow as gw
+
+transcription = ""
+whole = ""
+previous_transcription = ""
+prv = ""
+aai.settings.api_key = "e8349e0c311e419ab4a0993dcade5866"  # Your AssemblyAI API key
+
+# Function to open ChatGPT in Chrome
+
+def click_stay_logged_out_button():
+    original_x, original_y = pyautogui.position()
+    # Example coordinates, replace with actual coordinates you found
+    x, y = 477, 750 # Replace with actual x, y of the button
+    pyautogui.click(x, y)
+    print("Clicked the 'Stay logged out' button.")
+    pyautogui.moveTo(original_x,original_y, duration=0)
+
+
+def open_chatgpt_in_chrome():
+    try:
+        # Check if a ChatGPT window is already open in the browserThere's a partition between the C.Drive.And unallocated space.The extend.Volume grayed out.It.Could be.The recovery partition or.A random one.Therefore, a third party tool can be your best assistant.
+
+        chatgpt_window = gw.getWindowsWithTitle("ChatGPT")
+
+        if not chatgpt_window:
+            # If no ChatGPT window is found, open it in the browser
+            print("Opening ChatGPT in the browser...")
+            webbrowser.open("https://chat.openai.com")
+            time.sleep(5)  # Wait for the page to load
+        else:
+            print("ChatGPT is already open. Bringing it to the foreground.")
+            # If the window is already open, bring it to the foreground
+            bring_chatgpt_to_foreground()
+        click_stay_logged_out_button()
+
+    except Exception as e:
+        print(f"Error opening ChatGPT: {e}")
+
+def bring_chatgpt_to_foreground():
+    try:
+        # Get the ChatGPT window by searching for the title
+        chatgpt_window = gw.getWindowsWithTitle("ChatGPT")
+
+        if chatgpt_window:
+            chatgpt_window = chatgpt_window[0]  # Take the first match
+            if chatgpt_window.isMinimized:  # Check if the window is minimized
+                chatgpt_window.restore()  # Restore the window if minimized
+
+            chatgpt_window.activate()  # Bring the window to the foreground
+            time.sleep(1)  # Wait for the window to come into focus
+        else:
+            # If no window is found with "ChatGPT" in the title, open the webpage
+            print("ChatGPT window not found. Opening it in the browser.")
+            open_chatgpt_in_chrome()
+            time.sleep(5)  # Wait for the page to load
+    except Exception as e:
+        print(f"Error bringing ChatGPT to the foreground: {e}")
+
+
+def paste_and_send_clipboard_content():
+    global transcription, previous_transcription, prv
+
+    new_text = transcription[len(previous_transcription):]
+
+    if new_text:
+        pyperclip.copy(new_text)
+        original_x, original_y = pyautogui.position()
+
+        bring_chatgpt_to_foreground()
+
+        # Simulate pressing Ctrl+V to paste clipboard content
+        pyautogui.hotkey('ctrl', 'v')  # Press Ctrl+V to paste into the input field
+        time.sleep(1)  # Wait for the paste action to complete
+
+        # Simulate pressing Enter to send the message
+        pyautogui.click(831,954)
+        pyautogui.moveTo(original_x,original_y,duration=0)
+
+        print("Message sent.")
+        previous_transcription += new_text
+        print(previous_transcription)
+        prv += new_text
+        # Function to start transcription with AssemblyAI
+def start_transcription():
+    global transcription
+    transcriber = aai.RealtimeTranscriber(
+        sample_rate=44100,  # Sample rate for better quality
+        on_data=on_data,
+        on_error=on_error,
+        on_open=on_open,
+        on_close=on_close,
+        end_utterance_silence_threshold=150  # Silence threshold
+    )
+    transcriber.connect()
+    microphone_stream = aai.extras.MicrophoneStream(sample_rate=44100,device_index=1)
+    transcriber.stream(microphone_stream)
+
+# Callback function when data is received
+def on_data(transcript: aai.RealtimeTranscript):
+    global transcription, whole
+    if not transcript.text:
+        return
+
+    # If it's the final transcript, update the transcription and copy to clipboard
+    if isinstance(transcript, aai.RealtimeFinalTranscript):
+        whole += transcript.text
+        transcription += transcript.text
+
+
+# Callback functions for error and session closure
+def on_error(error: aai.RealtimeError):
+    print("An error occurred:", error)
+
+def on_open(session_opened: aai.RealtimeSessionOpened):
+    print("Session ID:", session_opened.session_id)
+
+def on_close():
+    print("Session closed.")
+
+# Function to monitor clipboard and send content to ChatGPT
+def monitor_clipboard():
+    global transcription
+    print("Monitoring clipboard for new content.")
+
+    shift_triggered = False
+    numlock_triggered = False
+    while True:
+        if keyboard.is_pressed('num lock'):
+            if not numlock_triggered:
+                print("num lock")
+                paste_and_send_clipboard_content()
+                time.sleep(1)  # Wait 1 second before checking the clipboard again
+                numlock_triggered = True
+        else:
+            numlock_triggered = False
+        if keyboard.is_pressed('shift'):
+            if not shift_triggered:
+                print("clear")
+                clear()
+                shift_triggered = True
+        else:
+            shift_triggered = False
+        time.sleep(0.1)
+
+
+
+def start_speechtotext():
+    transcription_thread = threading.Thread(target=start_transcription)
+    transcription_thread.start()
+
+def clear():
+    global transcription, whole, prv
+    transcription = ""
+    pyperclip.copy("")
+    print("Whole = " + whole)
+    print("Prv = " + prv)
+
+def main():
+    # Open ChatGPT in the browser
+    open_chatgpt_in_chrome()
+
+    # Wait for the page to load
+    print("Waiting for ChatGPT to load...")
+    time.sleep(5)  # Wait 10 seconds for ChatGPT to fully load
+
+    # Start transcription in a separate thread
+    start_speechtotext()
+
+    # Start monitoring clipboard in the main thread
+    pyautogui.hotkey('ctrl', 'v')
+    pyautogui.press('enter')
+    monitor_clipboard()
+
+if __name__ == "__main__":
+    pyperclip.copy("")
+    main()
+
+
+
