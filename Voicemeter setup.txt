@@ -23,3 +23,5 @@ https://l.facebook.com/l.php?u=https%3A%2F%2Fdownload.vb-audio.com%2FDownload_CA
 In Teams or Any Other Application, Set the Microphone to 'Voicemeeter':
 
 In the application (like Microsoft Teams or any other), set the microphone to 'Voicemeeter' to use the configured setup.
+
+make sure hardware input1 B is on A is off
