@@ -24,4 +24,4 @@ In Teams or Any Other Application, Set the Microphone to 'Voicemeeter':
 
 In the application (like Microsoft Teams or any other), set the microphone to 'Voicemeeter' to use the configured setup.
 
-make sure hardware input1 B is on A is off
+Dont make B on in hardware input 1 because it will help us to transcribe only interviewr voice only and for your voice select microphone realtex array in teams/etc...
